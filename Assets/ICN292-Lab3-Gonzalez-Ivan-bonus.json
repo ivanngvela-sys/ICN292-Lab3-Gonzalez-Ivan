@@ -1,0 +1,248 @@
+{
+  "name": "ICN292-Lab3-Gonzalez-Ivan-bonus",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "triage-bonus",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b0nus001-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "b0nus001-web1-web1-web1-000000000001"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body;\nconst id = body.id_solicitud;\nconst monto = body.monto !== undefined ? Number(body.monto) : undefined;\nconst dias = body.dias_desde_compra !== undefined ? Number(body.dias_desde_compra) : undefined;\nconst estado = body.estado_producto;\n\nlet ruta, motivo;\n\nif (id === undefined || id === '') {\n  ruta = 'DATOS_INVALIDOS';\n  motivo = 'id_solicitud vacio';\n} else if (monto === undefined || isNaN(monto) || monto <= 0) {\n  ruta = 'DATOS_INVALIDOS';\n  motivo = 'monto invalido (<=0 o ausente)';\n} else if (dias > 7) {\n  ruta = 'RECHAZO';\n  motivo = 'plazo excedido (>7 dias)';\n} else if (estado === 'danado_por_uso') {\n  ruta = 'RECHAZO';\n  motivo = 'producto danado por uso';\n} else if (monto > 40000) {\n  ruta = 'REVISION';\n  motivo = 'monto supera U=40000';\n} else if (estado === 'con_fallas') {\n  ruta = 'REVISION';\n  motivo = 'producto con fallas';\n} else {\n  ruta = 'APROBACION';\n  motivo = 'cumple todas las condiciones de la politica';\n}\n\nreturn [{ json: {\n  id_solicitud: body.id_solicitud,\n  sku: body.sku,\n  monto: body.monto,\n  dias_desde_compra: body.dias_desde_compra,\n  estado_producto: body.estado_producto,\n  email_cliente: body.email_cliente,\n  ruta,\n  motivo,\n  U: 40000,\n  D: 7\n} }];"
+      },
+      "id": "b0nus001-0002-0002-0002-000000000002",
+      "name": "Clasificar y marcar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-aprobacion-001",
+              "leftValue": "={{ $json.ruta }}",
+              "rightValue": "APROBACION",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b0nus001-0003-0003-0003-000000000003",
+      "name": "Es APROBACION",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://mindicador.cl/api",
+        "options": {}
+      },
+      "id": "b0nus001-0004-0004-0004-000000000004",
+      "name": "Consultar UF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-uf-001",
+              "name": "id_solicitud",
+              "value": "={{ $('Clasificar y marcar').item.json.id_solicitud }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-uf-002",
+              "name": "sku",
+              "value": "={{ $('Clasificar y marcar').item.json.sku }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-uf-003",
+              "name": "monto",
+              "value": "={{ $('Clasificar y marcar').item.json.monto }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-uf-004",
+              "name": "dias_desde_compra",
+              "value": "={{ $('Clasificar y marcar').item.json.dias_desde_compra }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-uf-005",
+              "name": "estado_producto",
+              "value": "={{ $('Clasificar y marcar').item.json.estado_producto }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-uf-006",
+              "name": "email_cliente",
+              "value": "={{ $('Clasificar y marcar').item.json.email_cliente }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-uf-007",
+              "name": "ruta",
+              "value": "={{ $('Clasificar y marcar').item.json.ruta }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-uf-008",
+              "name": "motivo",
+              "value": "={{ $('Clasificar y marcar').item.json.motivo }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-uf-009",
+              "name": "uf_valor",
+              "value": "={{ $json.uf.valor }}",
+              "type": "number"
+            },
+            {
+              "id": "assign-uf-010",
+              "name": "monto_en_uf",
+              "value": "={{ ($('Clasificar y marcar').item.json.monto / $json.uf.valor).toFixed(4) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b0nus001-0005-0005-0005-000000000005",
+      "name": "Datos con UF",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {},
+      "id": "b0nus001-0006-0006-0006-000000000006",
+      "name": "Notificacion cliente",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-reg-001",
+              "name": "id_solicitud",
+              "value": "={{ $json.id_solicitud }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-reg-002",
+              "name": "ruta",
+              "value": "={{ $json.ruta }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-reg-003",
+              "name": "motivo",
+              "value": "={{ $json.motivo }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-reg-004",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b0nus001-0007-0007-0007-000000000007",
+      "name": "Registrar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "b0nus001-0008-0008-0008-000000000008",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1780, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Clasificar y marcar", "type": "main", "index": 0 }]
+      ]
+    },
+    "Clasificar y marcar": {
+      "main": [
+        [{ "node": "Es APROBACION", "type": "main", "index": 0 }]
+      ]
+    },
+    "Es APROBACION": {
+      "main": [
+        [{ "node": "Consultar UF", "type": "main", "index": 0 }],
+        [{ "node": "Notificacion cliente", "type": "main", "index": 0 }]
+      ]
+    },
+    "Consultar UF": {
+      "main": [
+        [{ "node": "Datos con UF", "type": "main", "index": 0 }]
+      ]
+    },
+    "Datos con UF": {
+      "main": [
+        [{ "node": "Notificacion cliente", "type": "main", "index": 0 }]
+      ]
+    },
+    "Notificacion cliente": {
+      "main": [
+        [{ "node": "Registrar", "type": "main", "index": 0 }]
+      ]
+    },
+    "Registrar": {
+      "main": [
+        [{ "node": "Responder", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-09-15T00:00:00.000Z",
+  "versionId": "b0nus001-0004-0004-0004-000000000004"
+}
