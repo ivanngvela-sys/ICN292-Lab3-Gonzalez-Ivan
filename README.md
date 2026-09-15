@@ -3,7 +3,7 @@
 **Nombre:** Iván González Vela  
 **RUT:** 20.817.360  
 **Semilla S:** 360 — **Umbral U:** $40.000 — **Plazo D:** 7 días  
-**Fecha:** Septiembre 2026  
+**Fecha:** 16 de Septiembre 2026  
 **Repositorio:** https://github.com/ivanngvela-sys/ICN292-Lab3-Gonzalez-Ivan
 
 ---
