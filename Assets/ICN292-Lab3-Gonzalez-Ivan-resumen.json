@@ -1,0 +1,146 @@
+{
+  "name": "ICN292-Lab3-Gonzalez-Ivan-resumen",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 23 * * *"
+            }
+          ]
+        }
+      },
+      "id": "c2abc2c9-6f10-4325-83b0-5548def9b8a5",
+      "name": "Diario 20:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// En produccion este nodo seria reemplazado por un nodo de Google Sheets\n// o base de datos que lea los registros del dia.\n// Para el laboratorio devolvemos las 15 solicitudes ya procesadas por el triage.\nconst hoy = new Date().toISOString().slice(0, 10);\nreturn [\n  { json: { id_solicitud: 'DEV-1115', sku: 'AU-210', monto: 19990, ruta: 'APROBACION', motivo: 'todos_los_criterios_ok', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-1116', sku: 'TE-330', monto: 69980, ruta: 'REVISION', motivo: 'monto_elevado', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-1117', sku: 'HV-050', monto: 24990, ruta: 'RECHAZO', motivo: 'plazo_excedido', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-1118', sku: 'MW-150', monto: 79990, ruta: 'REVISION', motivo: 'monto_elevado', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-1119', sku: 'PL-120', monto: 45990, ruta: 'RECHAZO', motivo: 'plazo_excedido', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-1120', sku: 'AS-260', monto: 89990, ruta: 'REVISION', motivo: 'monto_elevado', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-1121', sku: 'LV-330', monto: 289990, ruta: 'RECHAZO', motivo: 'plazo_excedido', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-1122', sku: 'PL-120', monto: 45990, ruta: 'REVISION', motivo: 'monto_elevado', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-1123', sku: 'AU-210', monto: 39980, ruta: 'RECHAZO', motivo: 'plazo_excedido', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-1124', sku: 'HV-050', monto: 49980, ruta: 'REVISION', motivo: 'monto_elevado', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-1125', sku: 'TE-330', monto: 34990, ruta: 'RECHAZO', motivo: 'plazo_excedido', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-1126', sku: 'MW-150', monto: 79990, ruta: 'RECHAZO', motivo: 'plazo_excedido', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-C01', sku: 'CB-010', monto: 9990, ruta: 'APROBACION', motivo: 'todos_los_criterios_ok', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-C02', sku: 'LV-330', monto: 289990, ruta: 'REVISION', motivo: 'monto_elevado', fecha: hoy } },\n  { json: { id_solicitud: 'DEV-C03', sku: 'MW-150', monto: 79990, ruta: 'RECHAZO', motivo: 'plazo_excedido', fecha: hoy } }\n];"
+      },
+      "id": "db532efc-92f2-4d64-b43c-73f7a74bb475",
+      "name": "Leer registro",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
+            {
+              "aggregation": "countUnique",
+              "field": "id_solicitud"
+            },
+            {
+              "aggregation": "sum",
+              "field": "monto"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f952e6b0-f574-4f2b-be45-d555db85d746",
+      "name": "Consolidar por ruta",
+      "type": "n8n-nodes-base.summarize",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recibe los items agrupados por ruta del nodo Summarize.\n// Construye el mensaje de resumen diario.\nconst items = $input.all();\nconst fecha = new Date().toISOString().slice(0, 10);\n\nlet totalSolicitudes = 0;\nlet totalMonto = 0;\nlet aprobacion = { cantidad: 0, monto: 0 };\nlet rechazo = { cantidad: 0, monto: 0 };\nlet revision = { cantidad: 0, monto: 0 };\nlet invalido = { cantidad: 0, monto: 0 };\n\nfor (const item of items) {\n  const r = item.json;\n  totalSolicitudes += r.cantidad || 0;\n  totalMonto += r.monto_total || 0;\n  if (r.ruta === 'APROBACION') { aprobacion.cantidad = r.cantidad; aprobacion.monto = r.monto_total; }\n  else if (r.ruta === 'RECHAZO') { rechazo.cantidad = r.cantidad; rechazo.monto = r.monto_total; }\n  else if (r.ruta === 'REVISION') { revision.cantidad = r.cantidad; revision.monto = r.monto_total; }\n  else if (r.ruta === 'DATOS_INVALIDOS') { invalido.cantidad = r.cantidad; invalido.monto = r.monto_total; }\n}\n\nconst tasa = totalSolicitudes > 0\n  ? ((aprobacion.cantidad / totalSolicitudes) * 100).toFixed(1)\n  : '0.0';\n\nconst formatCLP = n => `$${Number(n).toLocaleString('es-CL')}`;\n\nconst mensaje = [\n  `=== RESUMEN DIARIO AndesHogar SpA — ${fecha} ===`,\n  `Total solicitudes procesadas: ${totalSolicitudes}`,\n  `Monto total del dia: ${formatCLP(totalMonto)}`,\n  ``,\n  `APROBACION : ${aprobacion.cantidad} solicitudes — ${formatCLP(aprobacion.monto)}`,\n  `REVISION   : ${revision.cantidad} solicitudes — ${formatCLP(revision.monto)}`,\n  `RECHAZO    : ${rechazo.cantidad} solicitudes — ${formatCLP(rechazo.monto)}`,\n  `INVALIDAS  : ${invalido.cantidad} solicitudes — ${formatCLP(invalido.monto)}`,\n  ``,\n  `Tasa de aprobacion automatica: ${tasa}%`,\n].join('\\n');\n\nreturn [{ json: { mensaje, fecha, totalSolicitudes, totalMonto, tasa } }];"
+      },
+      "id": "fc77e324-6497-4190-b76d-6b31890a7e4f",
+      "name": "Armar mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "4f47a974-8510-4665-bbf1-cc3cbe367ff7",
+      "name": "Notificacion resumen",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Diario 20:00": {
+      "main": [
+        [
+          {
+            "node": "Leer registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer registro": {
+      "main": [
+        [
+          {
+            "node": "Consolidar por ruta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidar por ruta": {
+      "main": [
+        [
+          {
+            "node": "Armar mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar mensaje": {
+      "main": [
+        [
+          {
+            "node": "Notificacion resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f143a9f7-03f9-4795-a317-ec12d3614e61",
+  "meta": {
+    "instanceId": "d44b98a4b9bc33ea76ec35e95e9be306cdc81774b2eaf248cf8bd8a87eebd0c4"
+  },
+  "nodeGroups": [],
+  "id": "mwvibQcNsWMo71wo",
+  "tags": []
+}

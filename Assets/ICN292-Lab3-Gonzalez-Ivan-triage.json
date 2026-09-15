@@ -1,0 +1,473 @@
+{
+  "name": "ICN292-Lab3-Gonzalez-Ivan-triage",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "triage-dev",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b6bd2109-89ce-4be6-a4b8-0b133d609c37",
+      "name": "Recibir solicitud",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        416
+      ],
+      "webhookId": "a1b2c3d4-0001-0001-0001-000000000001"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.id_solicitud }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    },
+                    "id": "c5a345f7-735c-4fce-9693-a644fd57ab81"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "INVALIDO_CAMPO"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.monto.toNumber() }}",
+                    "rightValue": 0,
+                    "operator": {
+                      "type": "number",
+                      "operation": "lte"
+                    },
+                    "id": "4ca074b5-de40-480f-843d-5086ac389214"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "INVALIDO_MONTO"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.dias_desde_compra.toNumber() }}",
+                    "rightValue": 7,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gt"
+                    },
+                    "id": "85c90dde-8ae6-472c-9571-d71d08119d50"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "RECHAZO_PLAZO"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.estado_producto }}",
+                    "rightValue": "danado_por_uso",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "da8ea74d-56fc-441a-8c57-6459d5aeafa8"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "RECHAZO_ESTADO"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.monto.toNumber() }}",
+                    "rightValue": 40000,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gt"
+                    },
+                    "id": "a154576b-a458-47a2-953c-b75a0e4de99e"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "REVISION_MONTO"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.estado_producto }}",
+                    "rightValue": "con_fallas",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "6ab76e09-0e86-448d-973b-3b74d5cffef7"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "REVISION_FALLA"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "APROBACION",
+          "allMatchingOutputs": false
+        }
+      },
+      "id": "a7d4a30d-5230-40e1-a292-b74c109f4678",
+      "name": "Clasificar",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -432,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "e48e1dc3-4251-4c90-b4a6-a0b5fcb5e24f",
+      "name": "Marcar INVALIDO",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        -144,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "78dcc436-6b64-48fe-b18a-fd15c23ce0a9",
+      "name": "Marcar RECHAZO",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        -144,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "63bee9c3-59bd-464d-bc63-53dfa7a77c5b",
+      "name": "Marcar REVISION",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        -144,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "da7f7587-9b99-49d7-af7e-f34459a3f94e",
+      "name": "Marcar APROBACION",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        -144,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://mindicador.cl/api",
+        "options": {}
+      },
+      "id": "9a73e936-2d1c-4e71-95f2-29359b31a883",
+      "name": "Consultar UF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        144,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "97436678-fd74-46fe-a1eb-558bf5f08a26",
+      "name": "Datos con UF",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        416,
+        640
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "da113a0b-0b37-4dfa-9707-f8c5b29ac5be",
+      "name": "Notificacion cliente",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        704,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "047cf328-af77-47c9-b50d-309e73778d44",
+      "name": "Registrar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        976,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ id_solicitud: $json.id_solicitud, ruta: $json.ruta, motivo: $json.motivo }) }}",
+        "options": {}
+      },
+      "id": "14de95c1-8158-479e-abd5-dad04ad6a828",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        336
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Recibir solicitud": {
+      "main": [
+        [
+          {
+            "node": "Clasificar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clasificar": {
+      "main": [
+        [
+          {
+            "node": "Marcar INVALIDO",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Marcar INVALIDO",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Marcar RECHAZO",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Marcar RECHAZO",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Marcar REVISION",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Marcar REVISION",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Marcar APROBACION",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar INVALIDO": {
+      "main": [
+        [
+          {
+            "node": "Notificacion cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar RECHAZO": {
+      "main": [
+        [
+          {
+            "node": "Notificacion cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar REVISION": {
+      "main": [
+        [
+          {
+            "node": "Notificacion cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar APROBACION": {
+      "main": [
+        [
+          {
+            "node": "Consultar UF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar UF": {
+      "main": [
+        [
+          {
+            "node": "Datos con UF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos con UF": {
+      "main": [
+        [
+          {
+            "node": "Notificacion cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notificacion cliente": {
+      "main": [
+        [
+          {
+            "node": "Registrar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "480ffbb3-06f3-428d-b765-e62ecd604448",
+  "meta": {
+    "instanceId": "d44b98a4b9bc33ea76ec35e95e9be306cdc81774b2eaf248cf8bd8a87eebd0c4"
+  },
+  "nodeGroups": [],
+  "id": "nIHSHBYnopiB4aNJ",
+  "tags": []
+}
