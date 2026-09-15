@@ -35,6 +35,7 @@
 {\large \textbf{ICN292:} Laboratorio \par}
 {\large \textbf{Profesor:} Jos\'e Luis S\'aez Tamayo \par}
 {\large \textbf{Fecha:} Septiembre 2026 \par}
+{\large \textbf{Repositorio:} \url{https://github.com/ivanngvela-sys/ICN292-Lab3-Gonzalez-Ivan} \par}
 \vfill
 \end{titlepage}
 
@@ -47,7 +48,7 @@
 Se dise\~n\'o e implement\'o un sistema de triage automatizado para AndesHogar SpA usando la plataforma n8n. El sistema recibe solicitudes de garant\'ia v\'ia HTTP POST y las clasifica en cuatro rutas (\texttt{DATOS\_INVALIDOS}, \texttt{RECHAZO}, \texttt{REVISION}, \texttt{APROBACION}) aplicando la pol\'itica definida por los par\'ametros S = 360, U = \$40.000 y D = 7. Se desarrollaron tres workflows principales (triage, emisor y resumen diario) y un workflow bonus que reimplementa la clasificaci\'on con un \'unico nodo de c\'odigo. Se ejecutaron las pruebas de la Parte C, verificando el comportamiento ante entradas inv\'alidas, casos l\'imite, errores de tipo y casos irresolubles por dise\~no.
 
 Para AndesHogar SpA se recomienda mantener el flujo principal basado en Switch y nodos Set. Esta implementaci\'on permite que cualquier operador ajuste las reglas directamente desde la interfaz visual de n8n, sin necesidad de escribir c\'odigo, y ofrece un registro de ejecuci\'on nodo a nodo que facilita identificar qu\'e condici\'on se activ\'o en cada solicitud. El nodo Code del bonus es m\'as compacto y eficiente para iterar sobre la pol\'itica, pero concentra toda la l\'ogica en un punto \'unico que requiere conocimiento de JavaScript para mantener o depurar, lo que representa una barrera para un equipo sin conocimiento t\'ecnico.
-
+El repositorio del laboratorio se encuentra en \url{https://github.com/ivanngvela-sys/ICN292-Lab3-Gonzalez-Ivan}.
 \section{Par\'ametros}
 
 \begin{center}
