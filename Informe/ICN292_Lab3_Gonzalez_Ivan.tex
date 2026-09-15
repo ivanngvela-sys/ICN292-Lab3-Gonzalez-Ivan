@@ -1,0 +1,181 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\geometry{top=3cm, bottom=3cm, left=2.5cm, right=2.5cm}
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{float}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\rhead{\includegraphics[width=6cm]{header_utfsm.png}}
+\cfoot{\thepage}
+
+\begin{document}
+
+\begin{titlepage}
+\thispagestyle{empty}
+\centering
+\includegraphics[width=4cm]{logo usm.jpg}\par
+\vspace{1cm}
+{\Large \textbf{UNIVERSIDAD T\'ECNICA FEDERICO SANTA MAR\'IA} \par}
+{\large Campus Vitacura \par}
+\vspace{3cm}
+{\Huge \textbf{Laboratorio 3: AndesHogar SpA} \par}
+\vspace{6cm}
+{\large \textbf{Autor:} Iv\'an Gonz\'alez Vela \par}
+{\large \textbf{Semilla personal S = 360, U = \$40.000, D = 7} \par}
+{\large \textbf{ICN292:} Laboratorio \par}
+{\large \textbf{Profesor:} Jos\'e Luis S\'aez Tamayo \par}
+{\large \textbf{Fecha:} Septiembre 2026 \par}
+\vfill
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section*{Resumen ejecutivo}
+
+Se dise\~n\'o e implement\'o un sistema de triage automatizado para AndesHogar SpA usando la plataforma n8n. El sistema recibe solicitudes de garant\'ia v\'ia HTTP POST y las clasifica en cuatro rutas (\texttt{DATOS\_INVALIDOS}, \texttt{RECHAZO}, \texttt{REVISION}, \texttt{APROBACION}) aplicando la pol\'itica definida por los par\'ametros S = 360, U = \$40.000 y D = 7. Se desarrollaron tres workflows principales (triage, emisor y resumen diario) y un workflow bonus que reimplementa la clasificaci\'on con un \'unico nodo de c\'odigo. Se ejecutaron las pruebas de la Parte C, verificando el comportamiento ante entradas inv\'alidas, casos l\'imite, errores de tipo y casos irresolubles por dise\~no.
+
+Para AndesHogar SpA se recomienda mantener el flujo principal basado en Switch y nodos Set. Esta implementaci\'on permite que cualquier operador ajuste las reglas directamente desde la interfaz visual de n8n, sin necesidad de escribir c\'odigo, y ofrece un registro de ejecuci\'on nodo a nodo que facilita identificar qu\'e condici\'on se activ\'o en cada solicitud. El nodo Code del bonus es m\'as compacto y eficiente para iterar sobre la pol\'itica, pero concentra toda la l\'ogica en un punto \'unico que requiere conocimiento de JavaScript para mantener o depurar, lo que representa una barrera para un equipo sin conocimiento t\'ecnico.
+
+\section{Par\'ametros}
+
+\begin{center}
+\begin{tabular}{llr}
+\toprule
+Par\'ametro & Descripci\'on & Valor \\
+\midrule
+$S$ & Semilla personal & 360 \\
+$U$ & Umbral de monto m\'aximo (CLP) & \$40.000 \\
+$D$ & D\'ias m\'aximos desde compra & 7 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Workflow de Triage}
+
+El workflow \texttt{ICN292-Lab3-Gonzalez-Ivan-triage} recibe solicitudes POST en \texttt{/triage-dev} y las clasifica mediante un nodo Switch con 6 reglas ordenadas m\'as fallback. Consta de 11 nodos.
+
+\subsection{Reglas de clasificaci\'on}
+
+El nodo Switch opera en modo \textit{Rules} con \textit{Send data to all matching outputs} desactivado, de modo que solo aplica la primera regla que coincida.
+
+\begin{center}
+\begin{tabular}{clll}
+\toprule
+Salida & Campo evaluado & Condici\'on & Ruta asignada \\
+\midrule
+0 & \texttt{id\_solicitud} & est\'a vac\'io & \texttt{DATOS\_INVALIDOS} \\
+1 & \texttt{monto.toNumber()} & $\leq 0$ & \texttt{DATOS\_INVALIDOS} \\
+2 & \texttt{dias\_desde\_compra.toNumber()} & $> 7$ & \texttt{RECHAZO} \\
+3 & \texttt{estado\_producto} & = \texttt{danado\_por\_uso} & \texttt{RECHAZO} \\
+4 & \texttt{monto.toNumber()} & $> 40.000$ & \texttt{REVISION} \\
+5 & \texttt{estado\_producto} & = \texttt{con\_fallas} & \texttt{REVISION} \\
+Fallback & & ninguna regla anterior & \texttt{APROBACION} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Las reglas 1, 2 y 4 usan \texttt{.toNumber()} porque los campos llegan como texto desde el webhook, el tipo del operador se configura como \textbf{Number}.
+
+\subsection{Flujo tras la clasificaci\'on}
+
+Las rutas \texttt{DATOS\_INVALIDOS}, \texttt{RECHAZO} y \texttt{REVISION} pasan directamente a los nodos de notificaci\'on y registro. La ruta \texttt{APROBACION} consulta adicionalmente la API \texttt{mindicador.cl/api} para obtener el valor de la UF vigente y agrega los campos \texttt{uf\_valor} y \texttt{monto\_en\_uf} antes de continuar. Todos los caminos convergen en el nodo \textbf{Registrar} y terminan en \textbf{Respond to Webhook}.
+
+\section{Workflow Emisor}
+
+El workflow \texttt{ICN292-Lab3-Gonzalez-Ivan-emisor} genera y env\'ia las 15 solicitudes de prueba al triage. Un \textbf{Manual Trigger} inicia la ejecuci\'on, un nodo \textbf{Code} genera el arreglo de 15 objetos JSON con combinaciones variadas de campos v\'alidos e inv\'alidos, y un \textbf{HTTP Request} env\'ia cada uno al webhook del triage mediante POST.
+
+\section{Workflow Resumen Diario}
+
+El workflow \texttt{ICN292-Lab3-Gonzalez-Ivan-resumen} genera un reporte consolidado al cierre del d\'ia. Un \textbf{Schedule Trigger} llamado ``Diario 20:00'' lo activa todos los d\'ias a las 20:00, el nodo \textbf{Leer registro} lee los resultados del d\'ia, \textbf{Consolidar por ruta} agrupa y cuenta las solicitudes por ruta, \textbf{Armar mensaje} construye el texto del resumen, y \textbf{Notificacion resumen} env\'ia el resultado al canal correspondiente.
+
+\section{Parte C}
+
+\subsection{Configuraci\'on previa}
+
+El nodo \textbf{Clasificar} (Switch) se configur\'o con \textit{On Error}: \textbf{Stop Workflow}, de modo que cualquier error en la evaluaci\'on de condiciones detiene el flujo y retorna un error HTTP al emisor.
+
+\subsection{C1}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{lXX}
+\toprule
+Caso & Entrada & Resultado observado \\
+\midrule
+C1-a & \texttt{id\_solicitud} vac\'io & Ruta \texttt{DATOS\_INVALIDOS}, regla 0. \\
+C1-b & \texttt{monto} ausente & HTTP 500: \textit{toNumber can't be used on undefined value}. Flujo detenido. \\
+C1-c & \texttt{monto = "0"} & Ruta \texttt{DATOS\_INVALIDOS}, regla 1. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+El caso C1-b es el comportamiento esperado: un campo obligatorio ausente provoca un error de tipo y el sistema lo rechaza de forma expl\'icita.
+
+\subsection{C3}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{lXX}
+\toprule
+Caso & Entrada & Resultado observado \\
+\midrule
+BORDE-U & \texttt{monto = 40000} (igual a $U$) & Ruta \texttt{APROBACION}. La regla 4 es estricta ($> 40.000$), el valor exacto no la activa. \\
+BORDE-D & \texttt{dias\_desde\_compra = 7} (igual a $D$) & Ruta \texttt{APROBACION}. La regla 2 es estricta ($> 7$), el valor exacto no la activa. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Ambos casos consultaron \texttt{mindicador.cl} exitosamente y confirman que el l\'imite exacto cae en \texttt{APROBACION}.
+
+\subsection{C4}
+
+Se cambi\'o temporalmente la condici\'on de la regla 4 de tipo \textbf{Number} a tipo \textbf{String}.
+
+\textbf{Error obtenido:} \textit{Wrong type: '9990' is a number but was expecting a string.}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{Error_C4.png}
+\caption{Error C4 en n8n: tipo incorrecto en condici\'on del Switch.}
+\end{figure}
+
+n8n valida los tipos en tiempo de ejecuci\'on. Tras verificar el comportamiento, se restaur\'o la condici\'on a tipo \textbf{Number}.
+
+\subsection{C5}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{lXX}
+\toprule
+Caso & Entrada & Resultado observado \\
+\midrule
+ERR-TEXT & \texttt{monto = "veintemil"} & HTTP 500: \textit{cannot convert to number}. Flujo detenido. \\
+ERR-SKU & \texttt{sku = "ZZ-999"} (inv\'alido por negocio) & Ruta \texttt{APROBACION}. Cumple todas las condiciones formales de la pol\'itica. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{Error_C5.png}
+\caption{Error C5 en n8n: monto no convertible a n\'umero.}
+\end{figure}
+
+El caso ERR-SKU evidencia una limitaci\'on de dise\~no: la pol\'itica no contempla validaci\'on de SKU contra un cat\'alogo, por lo que el sistema no tiene forma de rechazarlo.
+
+\section{Bonus}
+
+\subsection{Comparaci\'on}
+
+El flujo principal con Switch y nodos Set permite que un operador sin conocimientos de programaci\'on ajuste las reglas directamente desde la interfaz y ofrece un registro de ejecuci\'on nodo a nodo que facilita identificar qu\'e condici\'on se activ\'o en cada solicitud. El nodo Code del bonus es m\'as compacto y concentra toda la l\'ogica en un solo lugar, lo que agiliza los cambios cuando la pol\'itica se modifica con frecuencia, pero requiere JavaScript para mantener o revisar, lo que representa un riesgo para un equipo no t\'ecnico. Para AndesHogar SpA se recomienda el flujo principal; el bonus ser\'ia preferible solo si el equipo t\'ecnico asume el mantenimiento de los workflows.
+
+\end{document}
